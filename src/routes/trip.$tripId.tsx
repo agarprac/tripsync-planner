@@ -6,7 +6,7 @@ import { ActivityCard, MemberAvatar, type Activity, type Vote } from "@/componen
 import { AddActivityForm } from "@/components/tripsync/AddActivityForm";
 import { ItineraryPanel } from "@/components/tripsync/HarmonyAndItinerary";
 import { BARCELONA_FALLBACK, type Itinerary } from "@/lib/tripsync/constants";
-import { Calendar, Link2, Loader as Loader2, MapPin, Sparkles, Users } from "lucide-react";
+import { Calendar, Check, Copy, Link2, Loader as Loader2, MapPin, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/trip/$tripId")({
@@ -48,6 +48,8 @@ function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const seenAct = useRef(new Set<string>());
 
   useEffect(() => {
@@ -173,10 +175,24 @@ function BoardPage() {
     toast.success("Trip finalized 🎉");
   };
 
+  const inviteUrl = (() => {
+    const base = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+    return `${base}/join/${tripId}`;
+  })();
+
   const copyInvite = async () => {
-    const url = `${window.location.origin}/join/${tripId}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Link copied!");
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // clipboard failed, modal still shows the URL
+    }
+  };
+
+  const openInviteModal = () => {
+    setShowInviteModal(true);
+    setLinkCopied(false);
   };
 
   if (loading) return <div className="grid min-h-screen place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -185,7 +201,7 @@ function BoardPage() {
   return (
     <div className="min-h-screen" style={{ background: "#FFF8F0" }}>
       <SiteHeader right={
-        <button onClick={copyInvite} className="btn-outline-purple flex items-center gap-1.5 px-4 py-1.5 text-sm">
+        <button onClick={openInviteModal} className="btn-outline-purple flex items-center gap-1.5 px-4 py-1.5 text-sm">
           <Link2 className="h-4 w-4" /> Invite
         </button>
       } />
@@ -345,8 +361,31 @@ function BoardPage() {
       {locked && !bannerDismissed && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-3">
-            <p className="text-sm">🎉 This trip is finalized! Want to plan future trips? <a href="/create" className="font-semibold text-primary hover:underline">Create a free account — takes 10 seconds.</a></p>
+            <p className="text-sm">This trip is finalized! Want to plan future trips? <a href="/create" className="font-semibold text-primary hover:underline">Create a free account — takes 10 seconds.</a></p>
             <button onClick={() => setBannerDismissed(true)} className="ml-auto text-sm text-muted-foreground hover:text-foreground">Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      {/* Invite modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowInviteModal(false)}>
+          <div className="relative mx-4 w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowInviteModal(false)} className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2 text-primary">
+              <Link2 className="h-5 w-5" />
+              <h2 className="text-base font-semibold text-foreground">Invite friends</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Share this link — no account needed to join.</p>
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <span className="flex-1 truncate text-sm font-mono text-foreground select-all">{inviteUrl}</span>
+              <button onClick={copyInvite} className="flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90">
+                {linkCopied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">If you're in a preview/editor environment, copy the URL above and paste it into a new browser tab to share.</p>
           </div>
         </div>
       )}
