@@ -13,6 +13,9 @@ export const Route = createFileRoute("/join/$tripId")({
   ]}),
 });
 
+const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/join-trip`;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 function JoinPage() {
   const { tripId } = Route.useParams();
   const navigate = useNavigate();
@@ -24,17 +27,18 @@ function JoinPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: sess } = await supabase.auth.getSession();
-      if (!sess.session) {
-        await supabase.auth.signInAnonymously({
-          options: { data: { display_name: "Traveler", is_anonymous: true } },
+      try {
+        const res = await fetch(`${EDGE_URL}?tripId=${tripId}`, {
+          headers: { Authorization: `Bearer ${ANON_KEY}` },
         });
+        const data = await res.json();
+        setTrip(data.trip ?? null);
+        setCount(data.memberCount ?? 0);
+      } catch {
+        setTrip(null);
+      } finally {
+        setLoading(false);
       }
-      const { data: t } = await supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
-      setTrip(t);
-      const { count: c } = await supabase.from("members").select("*", { count: "exact", head: true }).eq("trip_id", tripId);
-      setCount(c ?? 0);
-      setLoading(false);
     })();
   }, [tripId]);
 
@@ -46,24 +50,27 @@ function JoinPage() {
     }
     setBusy(true);
     try {
-      const { data: existing } = await supabase.auth.getSession();
-      let userId = existing.session?.user?.id;
-      if (!userId) {
-        const { data, error } = await supabase.auth.signInAnonymously({
-          options: { data: { display_name: nickname, is_anonymous: true } },
-        });
-        if (error) throw error;
-        userId = data.user!.id;
-        // Update profile name in case trigger used default
-        await supabase.from("profiles").update({ display_name: nickname, is_anonymous: true }).eq("id", userId);
-      } else {
-        await supabase.from("profiles").update({ display_name: nickname }).eq("id", userId);
-      }
-      await supabase.from("members").insert({ trip_id: tripId, user_id: userId! }).then(() => {});
+      const res = await fetch(EDGE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({ tripId, nickname }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not join");
+
+      // Sign in with the generated credentials so the user has a real session
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      if (signInErr) throw signInErr;
+
       navigate({ to: "/trip/$tripId", params: { tripId } });
     } catch (err: any) {
       toast.error(err.message ?? "Could not join");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return <div className="grid min-h-screen place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
