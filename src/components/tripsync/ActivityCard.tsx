@@ -97,9 +97,10 @@ export function ActivityCard({
   );
 }
 
-export function MemberAvatar({ name, idx }: { name: string; idx: number }) {
+export function MemberAvatar({ name, idx, size = "sm" }: { name: string; idx: number; size?: "sm" | "md" }) {
+  const dim = size === "md" ? "h-10 w-10 text-sm" : "h-8 w-8 text-xs";
   return (
-    <div className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold text-white ring-2 ring-card ${colorForUser(name, idx)}`} title={name}>
+    <div className={`grid ${dim} place-items-center rounded-full font-bold text-white ring-2 ring-white ${colorForUser(name, idx)}`} title={name}>
       {initials(name)}
     </div>
   );

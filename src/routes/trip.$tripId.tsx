@@ -6,7 +6,7 @@ import { ActivityCard, MemberAvatar, type Activity, type Vote } from "@/componen
 import { AddActivityForm } from "@/components/tripsync/AddActivityForm";
 import { ItineraryPanel } from "@/components/tripsync/HarmonyAndItinerary";
 import { BARCELONA_FALLBACK, type Itinerary } from "@/lib/tripsync/constants";
-import { Link2, Loader as Loader2, Sparkles, Users } from "lucide-react";
+import { Calendar, Link2, Loader as Loader2, MapPin, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/trip/$tripId")({
@@ -25,6 +25,15 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${m.cls}`}>
       <span className={`h-2 w-2 rounded-full ${m.dot}`} />{m.label}
     </span>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2 text-base font-semibold text-slate-800">
+      <span className="h-4 w-1 rounded-full bg-[#7C3AED]" aria-hidden="true" />
+      {children}
+    </h2>
   );
 }
 
@@ -174,41 +183,102 @@ function BoardPage() {
   if (!trip) return <div className="grid min-h-screen place-items-center bg-background"><p>Trip not found.</p></div>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "#FFF8F0" }}>
       <SiteHeader right={
         <button onClick={copyInvite} className="btn-outline-purple flex items-center gap-1.5 px-4 py-1.5 text-sm">
           <Link2 className="h-4 w-4" /> Invite
         </button>
       } />
 
-      <div className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">{trip.trip_name}</h1>
-            <p className="text-xs text-muted-foreground">{trip.destination} · {trip.start_date} → {trip.end_date}</p>
+      {/* Gradient banner */}
+      <div
+        className="relative w-full px-6 pb-10 pt-8"
+        style={{ background: "linear-gradient(135deg, #7C3AED 0%, #9D4EDD 50%, #F97316 100%)" }}
+      >
+        <div className="mx-auto max-w-7xl">
+          {/* Title row */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl" style={{ letterSpacing: "-0.02em" }}>
+                {trip.trip_name}
+              </h1>
+              <p className="mt-1 text-sm font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>
+                {trip.destination} · {trip.start_date} → {trip.end_date}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusBadge status={trip.status} />
+            </div>
           </div>
-          <StatusBadge status={trip.status} />
-          <div className="ml-auto flex -space-x-1.5">
-            {members.slice(0,8).map((m, i) => <MemberAvatar key={m.user_id} name={m.display_name} idx={i} />)}
-            {members.length > 8 && <span className="grid h-8 w-8 place-items-center rounded-full bg-muted text-xs font-bold ring-2 ring-card">+{members.length - 8}</span>}
+
+          {/* Member avatars */}
+          <div className="mt-5 flex items-center gap-3">
+            <div className="flex -space-x-2">
+              {members.slice(0, 8).map((m, i) => (
+                <MemberAvatar key={m.user_id} name={m.display_name} idx={i} size="md" />
+              ))}
+              {members.length > 8 && (
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-white/20 text-xs font-bold text-white ring-2 ring-white">
+                  +{members.length - 8}
+                </div>
+              )}
+            </div>
+            <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+              {members.length} {members.length === 1 ? "member" : "members"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating info bar — overlaps banner */}
+      <div className="mx-auto max-w-7xl px-6">
+        <div
+          className="relative -mt-5 rounded-2xl border border-border bg-white px-5 py-4 shadow-lg"
+        >
+          <div className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-[#7C3AED]" />
+              <span className="font-medium text-slate-800">{trip.destination_city ?? trip.destination}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-[#F97316]" />
+              {trip.start_date} → {trip.end_date}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-[#14B8A6]" />
+              {members.length} {members.length === 1 ? "member" : "members"}
+            </span>
+            {(trip.vibe ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(trip.vibe ?? []).map((v: string) => (
+                  <span key={v} className="rounded-full bg-primary-light px-2.5 py-0.5 text-[11px] font-semibold text-primary">{v}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <main className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[240px_1fr_360px]">
-        {/* Left */}
+        {/* Left sidebar */}
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-border bg-white p-4 shadow-md">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trip details</h3>
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="h-3 w-1 rounded-full bg-[#7C3AED]" aria-hidden="true" />
+              Trip details
+            </h3>
             <p className="mt-2 text-sm font-semibold">{trip.destination_city}</p>
             <p className="text-xs text-muted-foreground">{trip.start_date} → {trip.end_date}</p>
             <div className="mt-3 flex flex-wrap gap-1">
-              {(trip.vibe ?? []).map((v: string) => <span key={v} className="rounded-md bg-primary-light px-2 py-0.5 text-[11px] font-medium text-primary">{v}</span>)}
+              {(trip.vibe ?? []).map((v: string) => <span key={v} className="rounded-full bg-primary-light px-2 py-0.5 text-[11px] font-semibold text-primary">{v}</span>)}
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">Budget: {trip.budget_category}</p>
           </div>
           <div className="rounded-2xl border border-border bg-white p-4 shadow-md">
-            <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" /><h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members ({members.length})</h3></div>
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="h-3 w-1 rounded-full bg-[#14B8A6]" aria-hidden="true" />
+              Members ({members.length})
+            </h3>
             <ul className="mt-3 space-y-2">
               {members.map((m, i) => (
                 <li key={m.user_id} className="flex items-center gap-2 text-sm">
@@ -224,9 +294,11 @@ function BoardPage() {
         <section className="space-y-6">
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-accent" />
-              <h2 className="text-lg font-semibold">AI Suggestions</h2>
-              <span className="text-xs text-muted-foreground">({aiActivities.length})</span>
+              <SectionHeading>
+                <Sparkles className="h-4 w-4 text-[#F97316]" />
+                AI Suggestions
+                <span className="text-xs font-normal text-muted-foreground">({aiActivities.length})</span>
+              </SectionHeading>
             </div>
             {aiActivities.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border bg-white p-6 text-center text-sm text-muted-foreground">Loading AI suggestions…</p>
@@ -240,8 +312,11 @@ function BoardPage() {
           </div>
 
           <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Your Group's Activities <span className="text-xs font-normal text-muted-foreground">({userActivities.length})</span></h2>
+            <div className="mb-3">
+              <SectionHeading>
+                Your Group's Activities
+                <span className="text-xs font-normal text-muted-foreground">({userActivities.length})</span>
+              </SectionHeading>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {userActivities.map((a) => (
